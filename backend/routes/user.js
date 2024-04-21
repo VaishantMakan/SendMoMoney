@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../secrets");
 
 const argon2 = require("argon2");
+const { authMiddleware } = require("../middleware");
 
 const router = express.Router();
 
@@ -79,7 +80,7 @@ router.post("/signin", async (req, res) => {
   const { success } = signinBody.safeParse(req.body);
 
   if (!success) {
-    res.status(411).json({
+    return res.status(411).json({
       message: "Error while logging in",
     });
   }
@@ -120,6 +121,68 @@ router.post("/signin", async (req, res) => {
     console.error("Error signing in:", error);
     res.status(500).json({ message: "Internal server error" });
   }
+});
+
+//for updating pass, firstName, lastname
+// defining zod schema for updates
+const updateBody = zod.object({
+  password: zod.string().optional(), //optional as user may or may not give
+  firstName: zod.string().optional(),
+  lastName: zod.string().optional(),
+});
+
+router.put("/", authMiddleware, async (req, res) => {
+  const { success } = updateBody.safeParse(req.body);
+
+  if (!success) {
+    return res.status(411).json({
+      message: "Error while updating information",
+    });
+  }
+
+  try {
+    await User.updateOne({ _id: req.userId }, req.body);
+
+    res.json({
+      message: "Updated successfully",
+    });
+  } catch (err) {
+    return res.status(411).json({
+      message: "Error while updating information",
+    });
+  }
+});
+
+//route to get users from the backend, filterable via firstName/lastName
+
+router.get("/bulk", async (req, res) => {
+  //get the filter given by user
+  const filter = req.query.filter || "";
+
+  //fetch the users based on the given filter
+  const users = await User.find({
+    $or: [
+      {
+        firstName: {
+          $regex: filter,
+        },
+      },
+      {
+        lastName: {
+          $regex: filter,
+        },
+      },
+    ],
+  });
+
+  res.json({
+    user: users.map((user) => ({
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      _id: user._id,
+    })),
+  });
 });
 
 module.exports = router;
