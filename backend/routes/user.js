@@ -1,6 +1,7 @@
 const express = require("express");
 const zod = require("zod");
 const { User } = require("../db");
+const { Account } = require("../db");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../secrets");
 
@@ -58,6 +59,17 @@ router.post("/signup", async (req, res) => {
       },
       JWT_SECRET
     );
+
+    //give the new user a dummy balance
+    try {
+      await Account.create({
+        userId: userId,
+        balance: Math.floor(Math.random() * 10000) + 1,
+      });
+    } catch (err) {
+      console.error("Error creating user: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
 
     res.json({
       message: "User created successfully",
