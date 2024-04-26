@@ -1,4 +1,4 @@
-import { dbString } from "./secrets";
+const { dbString } = require("./secrets");
 
 const mongoose = require("mongoose");
 
